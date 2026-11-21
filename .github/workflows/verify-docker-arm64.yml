@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 50b4b9242a7c652011dc9d4b8aada8a8c7be4329
+          ref: fd016298c3812643463cfd18588c154108b650d7
           persist-credentials: false
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
