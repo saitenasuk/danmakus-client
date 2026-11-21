@@ -1,0 +1,43 @@
+name: Verify danmakus-core multi-platform build
+on:
+  push:
+    branches: [verify/docker-arm64-50b4b92]
+permissions:
+  contents: read
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      registry:
+        image: registry:2
+        ports: ['5000:5000']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 50b4b9242a7c652011dc9d4b8aada8a8c7be4329
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+      - name: Build the PR image for AMD64 and ARM64
+        uses: docker/build-push-action@v6
+        with:
+          context: ./danmakus-core
+          file: ./danmakus-core/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: localhost:5000/danmakus-core:verify
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Verify the image index and start the CLI on each architecture
+        env:
+          IMAGE: localhost:5000/danmakus-core:verify
+        run: |
+          index=$(docker buildx imagetools inspect --raw "$IMAGE")
+          for arch in amd64 arm64; do
+            jq -e --arg arch "$arch" 'any(.manifests[]; .platform.os == "linux" and .platform.architecture == $arch)' <<<"$index"
+            docker run --pull=always --rm --platform "linux/$arch" "$IMAGE" --version
+            docker run --rm --platform "linux/$arch" "$IMAGE" --help
+          done
